@@ -1,11 +1,11 @@
 /*
- * client_udp.c — Client UDP
+ * client_udp.c — UDP client
  *
- * Envoie un message saisi par l'utilisateur à un serveur UDP.
- * Contrairement à TCP, aucune connexion n'est établie : le datagramme
- * est envoyé directement avec sendto().
+ * Sends a message typed by the user to a UDP server.
+ * Unlike TCP, no connection is established: the datagram is sent
+ * directly with sendto().
  *
- * Usage : ./client_udp <hostname>
+ * Usage: ./client_udp <hostname>
  */
 
 #include <stdio.h>
@@ -23,12 +23,12 @@
 int main(int argc, char *argv[])
 {
     if (argc < 2) {
-        fprintf(stderr, "Usage : %s <hostname>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <hostname>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
     /* ------------------------------------------------------------------ */
-    /* 1. Création du socket UDP                                           */
+    /* 1. Create the UDP socket                                           */
     /* ------------------------------------------------------------------ */
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) {
@@ -37,17 +37,17 @@ int main(int argc, char *argv[])
     }
 
     /* ------------------------------------------------------------------ */
-    /* 2. Résolution du nom d'hôte                                        */
+    /* 2. Resolve the host name                                           */
     /* ------------------------------------------------------------------ */
     struct hostent *server = gethostbyname(argv[1]);
     if (server == NULL) {
-        fprintf(stderr, "Erreur : hôte « %s » introuvable.\n", argv[1]);
+        fprintf(stderr, "Error: host \"%s\" not found.\n", argv[1]);
         close(sockfd);
         exit(EXIT_FAILURE);
     }
 
     /* ------------------------------------------------------------------ */
-    /* 3. Remplissage de la structure d'adresse du serveur                */
+    /* 3. Fill in the server address                                      */
     /* ------------------------------------------------------------------ */
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
@@ -56,10 +56,10 @@ int main(int argc, char *argv[])
     memcpy(&server_addr.sin_addr.s_addr, server->h_addr_list[0], server->h_length);
 
     /* ------------------------------------------------------------------ */
-    /* 4. Saisie du message                                               */
+    /* 4. Read the message                                                */
     /* ------------------------------------------------------------------ */
     char buffer[BUF_SIZE];
-    printf("Entrez votre message : ");
+    printf("Enter your message: ");
     fflush(stdout);
 
     if (fgets(buffer, BUF_SIZE, stdin) == NULL) {
@@ -67,14 +67,14 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    /* Suppression du '\n' final */
+    /* Remove the trailing '\n' */
     size_t len = strlen(buffer);
     if (len > 0 && buffer[len - 1] == '\n') {
         buffer[--len] = '\0';
     }
 
     /* ------------------------------------------------------------------ */
-    /* 5. Envoi du datagramme (sendto — pas de connexion préalable)       */
+    /* 5. Send the datagram (sendto, no connection needed)                */
     /* ------------------------------------------------------------------ */
     ssize_t sent = sendto(sockfd, buffer, len, 0,
                           (struct sockaddr *)&server_addr,
@@ -85,10 +85,10 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    printf("Message envoyé (%zd octets).\n", sent);
+    printf("Message sent (%zd bytes).\n", sent);
 
     /* ------------------------------------------------------------------ */
-    /* 6. Fermeture du socket                                              */
+    /* 6. Close the socket                                                */
     /* ------------------------------------------------------------------ */
     close(sockfd);
     return 0;
