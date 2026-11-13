@@ -1,11 +1,11 @@
 /*
- * serveur_udp.c — Serveur UDP avec écho
+ * server_udp.c — UDP echo server
  *
- * Reçoit des datagrammes UDP et renvoie chaque message à l'expéditeur
- * (comportement écho).  Contrairement à TCP, aucune connexion n'est
- * établie : chaque datagramme est traité indépendamment.
+ * Receives UDP datagrams and sends each message back to its sender
+ * (echo).  Unlike TCP, no connection is established: each datagram
+ * is handled independently.
  *
- * Usage : ./serveur_udp
+ * Usage: ./server_udp
  */
 
 #include <stdio.h>
@@ -23,7 +23,7 @@
 int main(void)
 {
     /* ------------------------------------------------------------------ */
-    /* 1. Création du socket UDP                                           */
+    /* 1. Create the UDP socket                                           */
     /* ------------------------------------------------------------------ */
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) {
@@ -32,7 +32,7 @@ int main(void)
     }
 
     /* ------------------------------------------------------------------ */
-    /* 2. Configuration de l'adresse locale                               */
+    /* 2. Set up the local address                                        */
     /* ------------------------------------------------------------------ */
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
@@ -41,7 +41,7 @@ int main(void)
     server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     /* ------------------------------------------------------------------ */
-    /* 3. Association du socket au port local (bind)                      */
+    /* 3. Bind the socket to the local port                               */
     /* ------------------------------------------------------------------ */
     if (bind(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
         perror("bind");
@@ -49,10 +49,10 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    printf("Serveur UDP en attente sur le port %d...\n", PORT);
+    printf("UDP server listening on port %d...\n", PORT);
 
     /* ------------------------------------------------------------------ */
-    /* 4. Boucle de réception                                             */
+    /* 4. Receive loop                                                    */
     /* ------------------------------------------------------------------ */
     char buffer[BUF_SIZE];
 
@@ -62,7 +62,7 @@ int main(void)
 
         memset(buffer, 0, BUF_SIZE);
 
-        /* recvfrom() récupère le datagramme ET l'adresse de l'expéditeur */
+        /* recvfrom() gets the datagram AND the sender's address */
         ssize_t n = recvfrom(sockfd, buffer, BUF_SIZE - 1, 0,
                              (struct sockaddr *)&client_addr, &client_len);
         if (n < 0) {
@@ -70,12 +70,12 @@ int main(void)
             continue;
         }
 
-        printf("[%s:%d] Message reçu (%zd oct.) : « %s »\n",
+        printf("[%s:%d] Message received (%zd bytes): \"%s\"\n",
                inet_ntoa(client_addr.sin_addr),
                ntohs(client_addr.sin_port),
                n, buffer);
 
-        /* Écho : renvoie le message à l'expéditeur */
+        /* Echo: send the message back to the sender */
         if (sendto(sockfd, buffer, (size_t)n, 0,
                    (struct sockaddr *)&client_addr, client_len) < 0) {
             perror("sendto");
