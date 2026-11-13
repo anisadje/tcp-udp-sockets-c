@@ -1,11 +1,11 @@
 /*
- * serveur_tcp.c — Serveur TCP multi-processus
+ * server_tcp.c — Multi-process TCP server
  *
- * Écoute sur un port fixe, accepte les connexions entrantes et traite
- * chaque client dans un processus fils dédié (fork).
- * Les processus zombies sont nettoyés via SIGCHLD / waitpid.
+ * Listens on a fixed port, accepts incoming connections and handles
+ * each client in a dedicated child process (fork).
+ * Zombie processes are cleaned up with SIGCHLD / waitpid.
  *
- * Usage : ./serveur_tcp
+ * Usage: ./server_tcp
  */
 
 #define _POSIX_C_SOURCE 200809L
@@ -26,7 +26,7 @@
 #define BACKLOG  5
 
 /* ------------------------------------------------------------------ */
-/* Gestionnaire SIGCHLD : récupère les processus fils terminés        */
+/* SIGCHLD handler: reaps finished child processes                    */
 /* ------------------------------------------------------------------ */
 static void reap_children(int sig)
 {
@@ -36,13 +36,13 @@ static void reap_children(int sig)
 }
 
 /* ------------------------------------------------------------------ */
-/* Traitement d'un client (exécuté dans le processus fils)            */
+/* Handles one client (runs in the child process)                     */
 /* ------------------------------------------------------------------ */
 static void handle_client(int newsockfd, struct sockaddr_in *client_addr)
 {
     char buffer[BUF_SIZE];
 
-    printf("[fils %d] Client connecté : %s:%d\n",
+    printf("[child %d] Client connected: %s:%d\n",
            getpid(),
            inet_ntoa(client_addr->sin_addr),
            ntohs(client_addr->sin_port));
@@ -50,44 +50,44 @@ static void handle_client(int newsockfd, struct sockaddr_in *client_addr)
     memset(buffer, 0, BUF_SIZE);
     ssize_t n = read(newsockfd, buffer, BUF_SIZE - 1);
     if (n > 0) {
-        /* Supprime le '\n' final pour un affichage plus propre */
+        /* Remove the trailing '\n' for a cleaner output */
         buffer[strcspn(buffer, "\n")] = '\0';
-        printf("[fils %d] Message reçu : « %s »\n", getpid(), buffer);
+        printf("[child %d] Message received: \"%s\"\n", getpid(), buffer);
 
-        const char *response = "Serveur : message bien reçu !\n";
+        const char *response = "Server: message received!\n";
         if (write(newsockfd, response, strlen(response)) < 0)
             perror("write");
     } else if (n == 0) {
-        printf("[fils %d] Connexion fermée par le client.\n", getpid());
+        printf("[child %d] Connection closed by the client.\n", getpid());
     } else {
         perror("read");
     }
 }
 
 /* ------------------------------------------------------------------ */
-/* Point d'entrée                                                      */
+/* Entry point                                                        */
 /* ------------------------------------------------------------------ */
 int main(void)
 {
-    /* -- Gestion des zombies ---------------------------------------- */
+    /* -- Zombie handling --------------------------------------------- */
     struct sigaction sa;
     sa.sa_handler = reap_children;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART;
     sigaction(SIGCHLD, &sa, NULL);
 
-    /* -- Création du socket d'écoute --------------------------------- */
+    /* -- Listening socket -------------------------------------------- */
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         perror("socket");
         exit(EXIT_FAILURE);
     }
 
-    /* Permet de réutiliser le port immédiatement après un redémarrage */
+    /* Allows the port to be reused right after a restart */
     int opt = 1;
     setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
-    /* -- Adresse locale ---------------------------------------------- */
+    /* -- Local address ----------------------------------------------- */
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family      = AF_INET;
@@ -106,9 +106,9 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    printf("Serveur TCP en attente sur le port %d...\n", PORT);
+    printf("TCP server listening on port %d...\n", PORT);
 
-    /* -- Boucle principale ------------------------------------------- */
+    /* -- Main loop --------------------------------------------------- */
     while (1) {
         struct sockaddr_in client_addr;
         socklen_t client_len = sizeof(client_addr);
@@ -129,14 +129,14 @@ int main(void)
         }
 
         if (pid == 0) {
-            /* Processus fils */
+            /* Child process */
             close(sockfd);
             handle_client(newsockfd, &client_addr);
             close(newsockfd);
             exit(EXIT_SUCCESS);
         }
 
-        /* Processus père : ferme la copie du socket client */
+        /* Parent process: closes its copy of the client socket */
         close(newsockfd);
     }
 
