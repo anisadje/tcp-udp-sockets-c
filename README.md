@@ -1,131 +1,133 @@
 # TCP & UDP Socket Programming in C
 
-> Implémentation d'une communication client/serveur en C avec les sockets POSIX — comparaison des protocoles **TCP** (orienté connexion) et **UDP** (sans connexion).
+> Client/server communication in C with POSIX sockets, comparing **TCP** (connection-oriented) and **UDP** (connectionless).
 
 ---
 
 ## Description
 
-Ce projet illustre les fondamentaux de la **programmation réseau en C** à travers deux architectures client/serveur :
+This project covers the basics of **network programming in C** through two client/server architectures:
 
-| Protocole | Type | Fiabilité | Usage typique |
-|-----------|------|-----------|---------------|
-| **TCP** | Orienté connexion | Garantie de livraison | Web, email, transfert de fichiers |
-| **UDP** | Sans connexion | Non garantie | Streaming, jeux en ligne, DNS |
+| Protocol | Type | Reliability | Typical use |
+|----------|------|-------------|-------------|
+| **TCP** | Connection-oriented | Guaranteed delivery | Web, email, file transfer |
+| **UDP** | Connectionless | Not guaranteed | Streaming, online games, DNS |
 
-### Fonctionnalités
+### Features
 
-- **Serveur TCP** : accepte des connexions entrantes, traite chaque client dans un **processus fils** (`fork`), répond au message reçu
-- **Client TCP** : établit une connexion, envoie un message, reçoit la réponse (timeout de 5s)
-- **Serveur UDP** : reçoit des datagrammes et renvoie un écho
-- **Client UDP** : envoie un message sans établissement de connexion préalable
+- **TCP server**: accepts incoming connections, handles each client in a **child process** (`fork`) and answers the message it receives
+- **TCP client**: connects to the server, sends a message and waits for the answer (5 s timeout)
+- **UDP server**: receives datagrams and sends them back (echo)
+- **UDP client**: sends a message without establishing a connection first
 
 ---
 
-## Architecture
+## Project structure
 
 ```
 .
-├── src/
-│   ├── client_tcp.c      # Client TCP avec timeout
-│   ├── serveur_tcp.c     # Serveur TCP multi-processus (fork)
-│   ├── client_udp.c      # Client UDP
-│   └── serveur_udp.c     # Serveur UDP avec écho
+├── client_tcp.c      # TCP client with timeout
+├── server_tcp.c      # Multi-process TCP server (fork)
+├── client_udp.c      # UDP client
+├── server_udp.c      # UDP echo server
 ├── Makefile
 └── README.md
 ```
 
 ---
 
-## Compilation
+## Build
 
-### Avec Make (recommandé)
+### With Make (recommended)
 
 ```bash
-make          # Compile tous les exécutables
-make clean    # Supprime les binaires
+make          # builds all the executables
+make clean    # removes the binaries
 ```
 
-### Manuellement
+### Manually
 
 ```bash
-gcc -Wall -Wextra -o client_tcp  src/client_tcp.c
-gcc -Wall -Wextra -o serveur_tcp src/serveur_tcp.c
-gcc -Wall -Wextra -o client_udp  src/client_udp.c
-gcc -Wall -Wextra -o serveur_udp src/serveur_udp.c
+gcc -Wall -Wextra -std=c99 -o client_tcp client_tcp.c
+gcc -Wall -Wextra -std=c99 -o server_tcp server_tcp.c
+gcc -Wall -Wextra -std=c99 -o client_udp client_udp.c
+gcc -Wall -Wextra -std=c99 -o server_udp server_udp.c
 ```
 
 ---
 
-## Utilisation
+## Usage
 
 ### TCP
 
-**Terminal 1 — Lancer le serveur :**
+**Terminal 1, start the server:**
 ```bash
-./serveur_tcp
-# Serveur TCP en attente sur le port 9600...
+./server_tcp
+# TCP server listening on port 9600...
+# [child 4242] Client connected: 127.0.0.1:58180
+# [child 4242] Message received: "Hello!"
 ```
 
-**Terminal 2 — Lancer le client :**
+**Terminal 2, start the client:**
 ```bash
 ./client_tcp localhost
-# Connecté au serveur sur le port 9600
-# Entrez votre message : Bonjour !
-# Serveur : Message bien reçu !
+# Connected to server localhost on port 9600.
+# Enter your message: Hello!
+# Response: Server: message received!
 ```
 
 ### UDP
 
-**Terminal 1 — Lancer le serveur :**
+**Terminal 1, start the server:**
 ```bash
-./serveur_udp
-# Serveur UDP en attente sur le port 9600...
+./server_udp
+# UDP server listening on port 9600...
+# [127.0.0.1:41234] Message received (6 bytes): "Hello!"
 ```
 
-**Terminal 2 — Lancer le client :**
+**Terminal 2, start the client:**
 ```bash
 ./client_udp localhost
-# Entrez votre message : Bonjour !
-# Message envoyé avec succès.
+# Enter your message: Hello!
+# Message sent (6 bytes).
 ```
 
-> **Note :** Par défaut, le port utilisé est `9600`. Modifiez la constante `PORT` dans les fichiers source pour en changer.
+> **Note:** the default port is `9600`. Change the `PORT` constant in the source files to use another one.
 
 ---
 
-## Concepts illustrés
+## Concepts
 
-### Cycle de vie d'un socket TCP (serveur)
+### Life cycle of a TCP server socket
 ```
 socket() → bind() → listen() → accept() → read()/write() → close()
 ```
 
-### Cycle de vie d'un socket UDP (serveur)
+### Life cycle of a UDP server socket
 ```
 socket() → bind() → recvfrom()/sendto() → close()
 ```
 
-### Gestion des processus zombies (TCP)
-Le serveur TCP utilise `sigaction(SIGCHLD, ...)` avec `waitpid()` pour éviter l'accumulation de processus zombies lors du traitement concurrent des clients.
+### Zombie processes (TCP)
+The TCP server uses `sigaction(SIGCHLD, ...)` with `waitpid()` so that finished child processes do not pile up as zombies while clients are handled concurrently.
 
 ---
 
-## Notions abordées
+## Topics covered
 
-- Sockets POSIX (`AF_INET`, `SOCK_STREAM`, `SOCK_DGRAM`)
-- Structures `sockaddr_in`, `hostent`
-- Fonctions `bind`, `listen`, `accept`, `connect`
-- Fonctions `send`/`recv` vs `sendto`/`recvfrom`
-- Gestion des signaux (`SIGCHLD`) et processus fils (`fork`)
-- Timeout sur réception (`SO_RCVTIMEO`)
-- Conversion d'ordre d'octets (`htons`, `htonl`, `ntohl`)
+- POSIX sockets (`AF_INET`, `SOCK_STREAM`, `SOCK_DGRAM`)
+- `sockaddr_in` and `hostent` structures
+- `bind`, `listen`, `accept`, `connect`
+- `read`/`write` vs `sendto`/`recvfrom`
+- Signal handling (`SIGCHLD`) and child processes (`fork`)
+- Receive timeout (`SO_RCVTIMEO`)
+- Byte order conversion (`htons`, `htonl`, `ntohs`)
 
 ---
 
-## Environnement
+## Environment
 
-- **Langage :** C (standard C99)
-- **OS :** Linux / macOS (POSIX)
-- **Compilateur :** GCC
-- **Bibliothèques :** `<sys/socket.h>`, `<netinet/in.h>`, `<netdb.h>`
+- **Language:** C (C99)
+- **OS:** Linux / macOS (POSIX)
+- **Compiler:** GCC
+- **Headers:** `<sys/socket.h>`, `<netinet/in.h>`, `<netdb.h>`
