@@ -1,10 +1,10 @@
 /*
- * client_tcp.c — Client TCP
+ * client_tcp.c — TCP client
  *
- * Établit une connexion avec un serveur TCP, envoie un message saisi
- * par l'utilisateur et affiche la réponse reçue.
+ * Connects to a TCP server, sends a message typed by the user
+ * and prints the response.
  *
- * Usage : ./client_tcp <hostname>
+ * Usage: ./client_tcp <hostname>
  */
 
 #include <stdio.h>
@@ -24,12 +24,12 @@
 int main(int argc, char *argv[])
 {
     if (argc < 2) {
-        fprintf(stderr, "Usage : %s <hostname>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <hostname>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
     /* ------------------------------------------------------------------ */
-    /* 1. Création du socket TCP                                           */
+    /* 1. Create the TCP socket                                           */
     /* ------------------------------------------------------------------ */
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
@@ -37,23 +37,23 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    /* Timeout de réception : 5 secondes (évite un blocage si le serveur
-     * ne répond pas) */
+    /* Receive timeout: 5 seconds (avoids blocking forever if the server
+     * does not answer) */
     struct timeval tv = { .tv_sec = 5, .tv_usec = 0 };
     setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
     /* ------------------------------------------------------------------ */
-    /* 2. Résolution du nom d'hôte                                        */
+    /* 2. Resolve the host name                                           */
     /* ------------------------------------------------------------------ */
     struct hostent *server = gethostbyname(argv[1]);
     if (server == NULL) {
-        fprintf(stderr, "Erreur : hôte « %s » introuvable.\n", argv[1]);
+        fprintf(stderr, "Error: host \"%s\" not found.\n", argv[1]);
         close(sockfd);
         exit(EXIT_FAILURE);
     }
 
     /* ------------------------------------------------------------------ */
-    /* 3. Remplissage de la structure d'adresse du serveur                */
+    /* 3. Fill in the server address                                      */
     /* ------------------------------------------------------------------ */
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
@@ -62,20 +62,20 @@ int main(int argc, char *argv[])
     memcpy(&server_addr.sin_addr.s_addr, server->h_addr_list[0], server->h_length);
 
     /* ------------------------------------------------------------------ */
-    /* 4. Connexion au serveur (3-way handshake TCP)                      */
+    /* 4. Connect to the server (TCP 3-way handshake)                     */
     /* ------------------------------------------------------------------ */
     if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
         perror("connect");
         close(sockfd);
         exit(EXIT_FAILURE);
     }
-    printf("Connecté au serveur %s sur le port %d.\n", argv[1], PORT);
+    printf("Connected to server %s on port %d.\n", argv[1], PORT);
 
     /* ------------------------------------------------------------------ */
-    /* 5. Saisie et envoi du message                                       */
+    /* 5. Read and send the message                                       */
     /* ------------------------------------------------------------------ */
     char buffer[BUF_SIZE];
-    printf("Entrez votre message : ");
+    printf("Enter your message: ");
     fflush(stdout);
 
     memset(buffer, 0, BUF_SIZE);
@@ -92,20 +92,20 @@ int main(int argc, char *argv[])
     }
 
     /* ------------------------------------------------------------------ */
-    /* 6. Réception de la réponse du serveur                              */
+    /* 6. Receive the server response                                     */
     /* ------------------------------------------------------------------ */
     memset(buffer, 0, BUF_SIZE);
     ssize_t n = read(sockfd, buffer, BUF_SIZE - 1);
     if (n < 0) {
         perror("read");
     } else if (n == 0) {
-        printf("Le serveur a fermé la connexion.\n");
+        printf("The server closed the connection.\n");
     } else {
-        printf("Réponse : %s", buffer);
+        printf("Response: %s", buffer);
     }
 
     /* ------------------------------------------------------------------ */
-    /* 7. Fermeture du socket                                              */
+    /* 7. Close the socket                                                */
     /* ------------------------------------------------------------------ */
     close(sockfd);
     return 0;
